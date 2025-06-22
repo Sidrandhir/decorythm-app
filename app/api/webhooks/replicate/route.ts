@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server';
  * In a "Phase 1.5" improvement, Replicate would call this API endpoint
  * once the AI image generation is complete.
  */
-export async function POST(request: Request) {
+export async function POST(_request: Request) {
   // In a real application, you would add logic here to:
   // 1. Securely verify the request came from Replicate.
   // 2. Get the generated image URL from the request body.
