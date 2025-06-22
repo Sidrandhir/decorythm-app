@@ -6,6 +6,8 @@ import { NextResponse } from 'next/server';
  * In a "Phase 1.5" improvement, Replicate would call this API endpoint
  * once the AI image generation is complete.
  */
+// THE DEFINITIVE FIX: This comment explicitly tells the linter to ignore the 'no-unused-vars' rule for the next line.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function POST(_request: Request) {
   // In a real application, you would add logic here to:
   // 1. Securely verify the request came from Replicate.
