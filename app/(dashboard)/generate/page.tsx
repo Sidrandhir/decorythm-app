@@ -15,26 +15,32 @@ export default function GeneratePage() {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
-    setResultImageUrl(null);
+    // Keep previous result visible while loading new one
+    // setResultImageUrl(null); 
 
     const formData = new FormData(event.currentTarget);
-    // We'll add the API call logic here in the next step
-
+    
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
         body: formData,
       });
 
-      if (!response.ok) {
-        throw new Error('Generation failed. Please try again.');
-      }
-
       const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Generation failed. Please try again.');
+      }
+      
       setResultImageUrl(result.outputUrl);
 
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      // THIS IS THE FIX
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unknown error occurred.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -51,8 +57,8 @@ export default function GeneratePage() {
           <StyleSelector />
           <button 
             type="submit"
-            disabled={isLoading}
-            className="mt-6 w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 disabled:bg-gray-400"
+            disabled={isLoading || !originalImageUrl}
+            className="mt-6 w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Generating...' : 'Transform My Room'}
           </button>
