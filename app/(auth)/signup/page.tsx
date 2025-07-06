@@ -58,9 +58,8 @@ export default function SignupPage() {
       return;
     }
 
-    // A successful call here means the OTP email has been sent.
-    // We now send the user to the OTP verification page.
     if (data.user) {
+      // Redirect to OTP verification page after signup
       router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
     } else {
       setError("An unexpected error occurred. Please try again.");
