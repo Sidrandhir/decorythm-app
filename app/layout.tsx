@@ -32,7 +32,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} ${playfair.variable} font-body bg-soft-white text-text-color`}>
         <Navbar />
-        <main className="p-4 sm:p-8">
+        <main className="pt-16">
           {children}
         </main>
       </body>

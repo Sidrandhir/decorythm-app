@@ -1,7 +1,7 @@
+// FINAL, HARMONIZED - File: app/(dashboard)/generate/page.tsx
 'use client';
+
 import { useState, useRef } from 'react';
-import imageCompression from 'browser-image-compression';
-import { createClient } from '@/lib/supabase'; // Import the client
 import { ImageUploader } from '@/components/forms/ImageUploader';
 import { StyleSelector } from '@/components/forms/StyleSelector';
 import { GenerationResult } from '@/components/shared/GenerationResult';
@@ -14,57 +14,45 @@ const FormTextarea = ({ label, name, placeholder, isOptional = false }: { label:
 );
 
 export default function GeneratePage() {
-    const supabase = createClient(); // Create the supabase client instance
     const [isLoading, setIsLoading] = useState(false);
-    const [loadingMessage, setLoadingMessage] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [resultImageUrl, setResultImageUrl] = useState<string | null>(null);
     const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
     const fileRef = useRef<File | null>(null);
     const formRef = useRef<HTMLFormElement>(null);
-    const resultBlobUrlRef = useRef<string | null>(null);
 
     const handleImageSelected = (file: File | null, previewUrl: string | null) => {
-        if (resultBlobUrlRef.current) URL.revokeObjectURL(resultBlobUrlRef.current);
         fileRef.current = file;
         setOriginalImageUrl(previewUrl);
-        setResultImageUrl(null);
+        setResultImageUrl(null); // Clear previous result on new image selection
         setError(null);
     };
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!fileRef.current) { setError("Please select an image first."); return; }
+        
         setIsLoading(true);
         setError(null);
-        if (resultBlobUrlRef.current) URL.revokeObjectURL(resultBlobUrlRef.current);
 
         try {
-            setLoadingMessage('Optimizing your image...');
-            const compressedFile = await imageCompression(fileRef.current, { maxSizeMB: 1, maxWidthOrHeight: 1024, useWebWorker: true });
-            
             const formData = new FormData(formRef.current!);
-            formData.set('image', compressedFile, compressedFile.name);
+            formData.set('image', fileRef.current);
 
-            setLoadingMessage('Sending to the design studio...');
             const response = await fetch('/api/generate', { method: 'POST', body: formData });
             
-            setLoadingMessage('The AI is working its magic...');
-            if (response.ok) {
-                const imageBlob = await response.blob();
-                if (imageBlob.size === 0) throw new Error("API returned an empty image.");
-                const localUrl = URL.createObjectURL(imageBlob);
-                resultBlobUrlRef.current = localUrl;
-                setResultImageUrl(localUrl);
-            } else {
-                const errorResult = await response.json().catch(() => ({ error: `Server error: ${response.statusText}` }));
-                throw new Error(errorResult.error);
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || `Server error: ${response.statusText}`);
             }
+
+            // The frontend now expects a JSON object with an 'outputUrl' property
+            setResultImageUrl(result.outputUrl);
+
         } catch (err) {
             setError(err instanceof Error ? err.message : "An unknown error occurred.");
         } finally {
             setIsLoading(false);
-            setLoadingMessage('');
         }
     };
 
@@ -81,9 +69,9 @@ export default function GeneratePage() {
                         <ImageUploader onImageSelected={handleImageSelected} />
                         <h2 className="text-xl font-bold font-heading border-b pb-2 mt-4">2. Your Vision</h2>
                         <StyleSelector />
-                        <FormTextarea label="Other Requirements (Optional)" name="other" placeholder="e.g., add a large ficus plant..." isOptional={true} />
+                        <FormTextarea label="Other Details" name="other" placeholder="e.g., add a large ficus plant in the corner, more windows..." isOptional={true} />
                         <button type="submit" disabled={isLoading || !originalImageUrl} className="button-primary py-3 text-base">
-                            {isLoading ? loadingMessage || "Designing..." : 'Generate My Redesign'}
+                            {isLoading ? "Designing..." : 'Generate My Redesign'}
                         </button>
                     </div>
                     <div className="p-6 border rounded-lg bg-pure-white shadow-soft sticky top-28 min-h-[400px]">

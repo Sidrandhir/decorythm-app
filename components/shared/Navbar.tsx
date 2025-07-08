@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 import UserMenu from './UserMenu';
 
 export default async function Navbar() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
 
   // --- THIS IS THE CORRECT, FULL CONFIGURATION ---
   const supabase = createServerClient(

@@ -1,9 +1,12 @@
+// FINAL, ROBUST - File: app/api/generate/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import Replicate from "replicate";
 
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN! });
+
+// Using the proven stable model for reliable image-to-image generation
 const IMAGE_GENERATION_MODEL = "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b";
 
 export async function POST(request: NextRequest) {
@@ -15,44 +18,40 @@ export async function POST(request: NextRequest) {
         { cookies: { get: (name: string) => cookieStore.get(name)?.value } }
     );
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { data: profile } = await supabase.from('profiles').select('role, credits').eq('id', user.id).single();
-    if (!profile) throw new Error("User profile not found.");
-    const isAdmin = profile.role === 'admin';
-    if (!isAdmin && profile.credits <= 0) return new Response(JSON.stringify({ error: "No credits left." }), { status: 402 });
+    const { data: profile } = await supabase.from('profiles').select('credits').eq('id', user.id).single();
+    if (!profile || profile.credits <= 0) return NextResponse.json({ error: "No credits left." }, { status: 402 });
 
     const formData = await request.formData();
     const imageFile = formData.get('image') as File;
-    const prompt = `award-winning architectural photography of a ${formData.get('designStyle')} ${formData.get('roomType')}, featuring ${formData.get('furniture')} made from ${formData.get('materials')}. The lighting is ${formData.get('lightingEffect')}. ${formData.get('other') || ''}. extremely detailed, photorealistic, 8k, masterpiece, cinematic, interior design by Kelly Wearstler.`;
-    
-    const inputFilePath = `${user.id}/input/${Date.now()}`;
-    await supabase.storage.from('generations').upload(inputFilePath, imageFile);
-    const { data: { publicUrl: inputImageUrl } } = supabase.storage.from('generations').getPublicUrl(inputFilePath);
+    const style = formData.get('designStyle') as string; // Matches StyleSelector name
+    const roomType = formData.get('roomType') as string; // Matches StyleSelector name
+    if (!imageFile || !style || !roomType) return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+
+    const filePath = `${user.id}/input/${Date.now()}.${imageFile.name.split('.').pop()}`;
+    await supabase.storage.from('generations').upload(filePath, imageFile);
+    const { data: { publicUrl: inputImageUrl } } = supabase.storage.from('generations').getPublicUrl(filePath);
+
+    // Simple, direct, and effective prompting
+    const prompt = `award-winning architectural photography of a ${style} ${roomType}, ${formData.get('lightingEffect')}, featuring ${formData.get('furniture')} made from ${formData.get('materials')}, extremely detailed, photorealistic, 8k, interior design`;
 
     const imageGenOutput = await replicate.run(IMAGE_GENERATION_MODEL, {
-        input: { image: inputImageUrl, prompt, image_strength: 0.75, negative_prompt: "blurry, low quality" }
+        input: { image: inputImageUrl, prompt, image_strength: 0.7 }
     });
     
-    const replicateImageUrl = (imageGenOutput as string[])?.[0];
-    if (!replicateImageUrl) throw new Error("AI model returned an empty result.");
+    const outputImageUrl = (imageGenOutput as string[])?.[0];
+    if (!outputImageUrl) throw new Error("AI model returned an empty result.");
     
-    const imageResponse = await fetch(replicateImageUrl);
-    const imageBlob = await imageResponse.blob();
+    // Save everything to the database
+    await supabase.from('generations').insert({ user_id: user.id, prompt, style, input_image_url: inputImageUrl, output_image_url: outputImageUrl });
+    await supabase.rpc('decrement_credits', { user_id_param: user.id });
+    
+    // Return the URL as JSON, which is what the frontend will now expect
+    return NextResponse.json({ outputUrl: outputImageUrl }, { status: 200 });
 
-    (async () => {
-        try {
-            const outputFilePath = `${user.id}/output/${Date.now()}.png`;
-            await supabase.storage.from('generations').upload(outputFilePath, imageBlob.slice());
-            const { data: { publicUrl: finalImageUrl } } = supabase.storage.from('generations').getPublicUrl(outputFilePath);
-            await supabase.from('generations').insert({ user_id: user.id, prompt, style: formData.get('designStyle') as string, input_image_url: inputImageUrl, output_image_url: finalImageUrl });
-            if (!isAdmin) await supabase.rpc('decrement_credits', { user_id_param: user.id });
-        } catch (e) { console.error("Background save task failed:", e); }
-    })();
-    
-    return new Response(imageBlob, { status: 200, headers: { 'Content-Type': 'image/png' } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "An unexpected error occurred.";
-    return new Response(JSON.stringify({ error: message }), { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
