@@ -7,6 +7,7 @@ import type { Prediction } from "replicate";
 
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN! });
 
+<<<<<<< HEAD
 type ModelString = `${string}/${string}:${string}`;
 const MODELS = {
   llm: 'meta/meta-llama-3-8b-instruct:63af54052e43033858c44b9437de5e59b3a358823a078e72bb3a151044453556' as ModelString,
@@ -26,7 +27,35 @@ async function waitForPrediction(prediction: Prediction): Promise<Prediction> {
     return currentPrediction;
 }
 
+=======
+// --- TYPE-SAFE MODEL CONFIGURATION ---
+// By defining the type here, we ensure TypeScript is happy everywhere we use these.
+type ModelString = `${string}/${string}:${string}`;
+
+// This is the most stable and reliable model configuration we have established.
+const MODELS = {
+  // Model for generating the detailed image prompt
+  llm: 'meta/meta-llama-3-8b-instruct:63af54052e43033858c44b9437de5e59b3a358823a078e72bb3a151044453556' as ModelString,
+  // Model for generating the final image using the original image as a guide.
+  image: 'stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b' as ModelString,
+};
+
+// Helper function to wait for a prediction to finish.
+async function waitForPrediction(prediction: Prediction): Promise<Prediction> {
+  if (prediction.status === "succeeded" || prediction.status === "failed") {
+    return prediction;
+  }
+  
+  await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+  const updatedPrediction = await replicate.predictions.get(prediction.id);
+  console.log(`Polling... Current status: ${updatedPrediction.status}`);
+  return waitForPrediction(updatedPrediction);
+}
+
+
+>>>>>>> b38716f (fix: Resolve build errors from ESLint and TypeScript types)
 export async function POST(request: NextRequest) {
+  // 1. Verification and Setup
   try {
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -45,10 +74,18 @@ export async function POST(request: NextRequest) {
     const imageFile = formData.get('image') as File;
     const style = formData.get('style') as string;
     const roomType = formData.get('roomType') as string;
+<<<<<<< HEAD
     const creativityLevel = formData.get('creativityLevel') as string || 'balanced';
 
     if (!imageFile || !style || !roomType) return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
 
+=======
+    const creativityLevel = formData.get('creativityLevel') as string || 'balanced'; // Default to 'balanced'
+
+    if (!imageFile || !style || !roomType) return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+
+    // 2. Image Preparation
+>>>>>>> b38716f (fix: Resolve build errors from ESLint and TypeScript types)
     const filePath = `${user.id}/${Date.now()}.${imageFile.name.split('.').pop()}`;
     await supabase.storage.from('generations').upload(filePath, imageFile);
     const { data: { publicUrl: inputImageUrl } } = supabase.storage.from('generations').getPublicUrl(filePath);
@@ -59,6 +96,7 @@ export async function POST(request: NextRequest) {
     let modelToUse: ModelString;
     let modelInput: object;
 
+<<<<<<< HEAD
     if (creativityLevel === 'creative') {
         modelToUse = MODELS.creative;
         modelInput = { image: inputImageUrl, prompt };
@@ -109,6 +147,49 @@ export async function POST(request: NextRequest) {
     }
     
     await supabase.from('generations').insert({ user_id: user.id, prompt: prompt, style, input_image_url: inputImageUrl, output_image_url: outputImageUrl });
+=======
+    // 3. Expert Prompting Logic
+    const metaPrompt = `You are a world-class interior design prompt engineer. Create a single, descriptive paragraph for an AI image generator. Goal: a photorealistic, high-end image. The user wants a ${style} ${roomType}. Inject keywords like 'opulent', 'bespoke', 'cinematic lighting', 'architectural digest', '8k'. Output only the prompt paragraph.`;
+    
+    console.log("Calling LLM to generate detailed prompt...");
+    const llmOutput = await replicate.run(MODELS.llm, { input: { prompt: metaPrompt } }) as string[];
+    const generatedImagePrompt = llmOutput.join("").trim();
+    if (!generatedImagePrompt) throw new Error("LLM failed to generate a creative prompt.");
+    console.log(`Generated Prompt: ${generatedImagePrompt}`);
+
+    // 4. Image Generation with Tuned Parameters
+    // Map creativity level to image_strength
+    const imageStrengthMap: { [key: string]: number } = {
+      'subtle': 0.75,   // More faithful to original
+      'balanced': 0.6, // Good balance
+      'creative': 0.45, // More transformative
+    };
+    const image_strength = imageStrengthMap[creativityLevel];
+
+    console.log(`Calling Image Model: ${MODELS.image} with strength ${image_strength}`);
+    const imageGenPrediction = await replicate.predictions.create({
+        version: MODELS.image.split(':')[1],
+        input: {
+          image: inputImageUrl,
+          prompt: generatedImagePrompt,
+          image_strength: image_strength,
+          negative_prompt: "cartoon, anime, drawing, painting, ugly, deformed, blurry, low quality",
+        }
+      });
+
+    const finalPrediction = await waitForPrediction(imageGenPrediction);
+    
+    if (finalPrediction.status === "failed") {
+        throw new Error(`AI Prediction Failed: ${finalPrediction.error}`);
+    }
+
+    const outputImageUrl = (finalPrediction.output as string[])[0];
+    if (!outputImageUrl) throw new Error("The AI model returned an empty result.");
+    console.log(`Successfully generated image URL: ${outputImageUrl}`);
+
+    // 5. Finalization
+    await supabase.from('generations').insert({ user_id: user.id, prompt: generatedImagePrompt, style, input_image_url: inputImageUrl, output_image_url: outputImageUrl });
+>>>>>>> b38716f (fix: Resolve build errors from ESLint and TypeScript types)
     await supabase.rpc('decrement_credits', { user_id_param: user.id });
 
     return NextResponse.json({ outputUrl: outputImageUrl }, { status: 200 });
