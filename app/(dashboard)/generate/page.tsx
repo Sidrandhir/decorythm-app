@@ -1,4 +1,4 @@
-// FINAL, HARMONIZED - File: app/(dashboard)/generate/page.tsx
+// File: app/(dashboard)/generate/page.tsx
 'use client';
 
 import { useState, useRef } from 'react';
@@ -13,18 +13,39 @@ const FormTextarea = ({ label, name, placeholder, isOptional = false }: { label:
     </div>
 );
 
+// --- NEW COMPONENT: THE MODEL SWITCH ---
+const ModelSelector = ({ selected, setSelected }: { selected: string, setSelected: (model: string) => void }) => (
+    <div className="flex items-center justify-center p-1 bg-gray-200 rounded-lg">
+        <button
+            type="button"
+            onClick={() => setSelected('creative')}
+            className={`w-1/2 py-2 px-4 rounded-md text-sm font-medium transition-colors ${selected === 'creative' ? 'bg-white shadow' : 'text-gray-600'}`}
+        >
+            Creative
+        </button>
+        <button
+            type="button"
+            onClick={() => setSelected('realistic')}
+            className={`w-1/2 py-2 px-4 rounded-md text-sm font-medium transition-colors ${selected === 'realistic' ? 'bg-white shadow' : 'text-gray-600'}`}
+        >
+            Realistic
+        </button>
+    </div>
+);
+
 export default function GeneratePage() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [resultImageUrl, setResultImageUrl] = useState<string | null>(null);
     const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
+    const [selectedModel, setSelectedModel] = useState('creative'); // <-- NEW STATE FOR THE MODEL
     const fileRef = useRef<File | null>(null);
     const formRef = useRef<HTMLFormElement>(null);
 
     const handleImageSelected = (file: File | null, previewUrl: string | null) => {
         fileRef.current = file;
         setOriginalImageUrl(previewUrl);
-        setResultImageUrl(null); // Clear previous result on new image selection
+        setResultImageUrl(null);
         setError(null);
     };
 
@@ -38,15 +59,13 @@ export default function GeneratePage() {
         try {
             const formData = new FormData(formRef.current!);
             formData.set('image', fileRef.current);
+            formData.append('selectedModel', selectedModel); // <-- SEND THE CHOSEN MODEL TO THE API
 
             const response = await fetch('/api/generate', { method: 'POST', body: formData });
             
             const result = await response.json();
-            if (!response.ok) {
-                throw new Error(result.error || `Server error: ${response.statusText}`);
-            }
+            if (!response.ok) throw new Error(result.error || `Server error: ${response.statusText}`);
 
-            // The frontend now expects a JSON object with an 'outputUrl' property
             setResultImageUrl(result.outputUrl);
 
         } catch (err) {
@@ -65,13 +84,16 @@ export default function GeneratePage() {
                 </div>
                 <form ref={formRef} onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                     <div className="flex flex-col gap-6 p-6 border rounded-lg bg-pure-white shadow-soft">
-                        <h2 className="text-xl font-bold font-heading border-b pb-2">1. Your Space</h2>
+                        <h2 className="text-xl font-bold font-heading border-b pb-2">1. Render Engine</h2>
+                        {/* --- ADD THE MODEL SWITCH HERE --- */}
+                        <ModelSelector selected={selectedModel} setSelected={setSelectedModel} />
+                        <h2 className="text-xl font-bold font-heading border-b pb-2 mt-4">2. Your Space</h2>
                         <ImageUploader onImageSelected={handleImageSelected} />
-                        <h2 className="text-xl font-bold font-heading border-b pb-2 mt-4">2. Your Vision</h2>
+                        <h2 className="text-xl font-bold font-heading border-b pb-2 mt-4">3. Your Vision</h2>
                         <StyleSelector />
-                        <FormTextarea label="Other Details" name="other" placeholder="e.g., add a large ficus plant in the corner, more windows..." isOptional={true} />
+                        <FormTextarea label="Other Details" name="other" placeholder="e.g., add a large ficus plant in the corner..." isOptional={true} />
                         <button type="submit" disabled={isLoading || !originalImageUrl} className="button-primary py-3 text-base">
-                            {isLoading ? "Designing..." : 'Generate My Redesign'}
+                            {isLoading ? "Designing..." : `Generate (${selectedModel === 'creative' ? 'Creative' : 'Realistic'})`}
                         </button>
                     </div>
                     <div className="p-6 border rounded-lg bg-pure-white shadow-soft sticky top-28 min-h-[400px]">
