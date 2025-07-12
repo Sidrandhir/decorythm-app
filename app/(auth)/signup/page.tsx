@@ -22,6 +22,22 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // --- START OF UPDATE ---
+  // This function validates that the phone number is exactly 10 digits.
+  const validatePhoneNumber = (phoneNumber: string) => {
+    const phoneRegex = /^\d{10}$/;
+    return phoneRegex.test(phoneNumber);
+  };
+  
+  // This function ensures only numbers can be typed and limits the length.
+  const handlePhoneInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const onlyNums = e.target.value.replace(/[^0-9]/g, '');
+    if (onlyNums.length <= 10) {
+      setPhone(onlyNums);
+    }
+  };
+  // --- END OF UPDATE ---
+
   const handleSignUp = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
@@ -34,11 +50,16 @@ export default function SignupPage() {
       setError("Password must be at least 8 characters long.");
       return;
     }
+    // --- START OF UPDATE ---
+    // Add the new validation check before submitting the form.
+    if (!validatePhoneNumber(phone)) {
+      setError("Please enter a valid 10-digit phone number.");
+      return;
+    }
+    // --- END OF UPDATE ---
 
     setIsLoading(true);
 
-    // This is the correct function. It creates a user and sends the
-    // "Confirm signup" email template you configured.
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -46,7 +67,7 @@ export default function SignupPage() {
         data: {
           first_name: firstName,
           last_name: lastName,
-          phone_number: phone,
+          phone_number: phone, // The validated phone number
         },
       },
     });
@@ -59,7 +80,6 @@ export default function SignupPage() {
     }
 
     if (data.user) {
-      // Redirect to OTP verification page after signup
       router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
     } else {
       setError("An unexpected error occurred. Please try again.");
@@ -88,10 +108,23 @@ export default function SignupPage() {
             <label htmlFor="email" className="block text-sm font-medium text-text-color-light">Email Address</label>
             <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="input-style"/>
           </div>
+          
+          {/* --- START OF UPDATE --- */}
+          {/* The phone number input is now updated to use the new handler. */}
           <div>
             <label htmlFor="phone" className="block text-sm font-medium text-text-color-light">Phone Number</label>
-            <input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required className="input-style"/>
+            <input 
+              id="phone" 
+              type="tel" // Use 'tel' for better mobile experience
+              value={phone} 
+              onChange={handlePhoneInputChange} // Use the new controlled input handler
+              required // This field is now mandatory
+              placeholder="e.g., 9876543210"
+              className="input-style"
+            />
           </div>
+          {/* --- END OF UPDATE --- */}
+
           <div>
             <label htmlFor="password"  className="block text-sm font-medium text-text-color-light">Password</label>
             <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
