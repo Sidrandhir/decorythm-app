@@ -1,106 +1,117 @@
 // File: app/(dashboard)/generate/page.tsx
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
+import imageCompression from 'browser-image-compression';
 import { ImageUploader } from '@/components/forms/ImageUploader';
 import { StyleSelector } from '@/components/forms/StyleSelector';
+import { CreativitySelector } from '@/components/forms/CreativitySelector';
 import { GenerationResult } from '@/components/shared/GenerationResult';
 
-const FormTextarea = ({ label, name, placeholder, isOptional = false }: { label: string, name: string, placeholder: string, isOptional?: boolean }) => (
-    <div>
-        <label htmlFor={name} className="block text-sm font-medium text-text-color-light">{label} {isOptional && <span className="text-text-color-subtle">(Optional)</span>}</label>
-        <textarea id={name} name={name} rows={2} className="input-style w-full" placeholder={placeholder} />
-    </div>
-);
-
-// --- NEW COMPONENT: THE MODEL SWITCH ---
-const ModelSelector = ({ selected, setSelected }: { selected: string, setSelected: (model: string) => void }) => (
-    <div className="flex items-center justify-center p-1 bg-gray-200 rounded-lg">
-        <button
-            type="button"
-            onClick={() => setSelected('creative')}
-            className={`w-1/2 py-2 px-4 rounded-md text-sm font-medium transition-colors ${selected === 'creative' ? 'bg-white shadow' : 'text-gray-600'}`}
-        >
-            Creative
-        </button>
-        <button
-            type="button"
-            onClick={() => setSelected('realistic')}
-            className={`w-1/2 py-2 px-4 rounded-md text-sm font-medium transition-colors ${selected === 'realistic' ? 'bg-white shadow' : 'text-gray-600'}`}
-        >
-            Realistic
-        </button>
-    </div>
-);
-
 export default function GeneratePage() {
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [resultImageUrl, setResultImageUrl] = useState<string | null>(null);
-    const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
-    const [selectedModel, setSelectedModel] = useState('creative'); // <-- NEW STATE FOR THE MODEL
-    const fileRef = useRef<File | null>(null);
-    const formRef = useRef<HTMLFormElement>(null);
+  // --- STATE IS THE SINGLE SOURCE OF TRUTH ---
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  
+  const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
+  const [resultImageUrl, setResultImageUrl] = useState<string | null>(null);
 
-    const handleImageSelected = (file: File | null, previewUrl: string | null) => {
-        fileRef.current = file;
-        setOriginalImageUrl(previewUrl);
-        setResultImageUrl(null);
-        setError(null);
-    };
+  // State for all form inputs
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [style, setStyle] = useState('Modern');
+  const [roomType, setRoomType] = useState('Living Room');
+  const [creativityLevel, setCreativityLevel] = useState('balanced');
+  // --- END OF STATE ---
 
-    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        if (!fileRef.current) { setError("Please select an image first."); return; }
-        
-        setIsLoading(true);
-        setError(null);
+  const handleImageSelected = (file: File | null, previewUrl: string | null) => {
+    setSelectedFile(file);
+    setOriginalImageUrl(previewUrl);
+  };
 
-        try {
-            const formData = new FormData(formRef.current!);
-            formData.set('image', fileRef.current);
-            formData.append('selectedModel', selectedModel); // <-- SEND THE CHOSEN MODEL TO THE API
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
 
-            const response = await fetch('/api/generate', { method: 'POST', body: formData });
-            
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.error || `Server error: ${response.statusText}`);
+    if (!selectedFile) {
+      setError("Please select an image to transform.");
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      setLoadingMessage("Preparing your image...");
+      const options = { maxSizeMB: 1, maxWidthOrHeight: 1024, useWebWorker: true };
+      const compressedFile = await imageCompression(selectedFile, options);
+      
+      // --- BULLETPROOF FORM DATA CONSTRUCTION ---
+      // We build the FormData object manually from our state variables.
+      // This is guaranteed to be correct.
+      const formData = new FormData();
+      formData.append('image', compressedFile, compressedFile.name);
+      formData.append('style', style);
+      formData.append('roomType', roomType);
+      formData.append('creativityLevel', creativityLevel);
+      // --- END OF FIX ---
+      
+      setLoadingMessage("Generating your new space...");
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        body: formData,
+      });
 
-            setResultImageUrl(result.outputUrl);
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'An unknown API error occurred.');
+      }
+      
+      setResultImageUrl(result.outputUrl);
 
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "An unknown error occurred.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    } catch (err) {
+      if (err instanceof Error) setError(err.message);
+      else setError("An unknown error occurred.");
+    } finally {
+      setIsLoading(false);
+      setLoadingMessage('');
+    }
+  };
 
-    return (
-        <div className="container mx-auto px-4 sm:p-8">
-            <div className="max-w-7xl mx-auto">
-                <div className="text-center mb-12">
-                    <h1 className="text-4xl font-bold font-heading">The Design Studio</h1>
-                    <p className="mt-2 text-lg text-text-color-light">Provide the details of your vision.</p>
-                </div>
-                <form ref={formRef} onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                    <div className="flex flex-col gap-6 p-6 border rounded-lg bg-pure-white shadow-soft">
-                        <h2 className="text-xl font-bold font-heading border-b pb-2">1. Render Engine</h2>
-                        {/* --- ADD THE MODEL SWITCH HERE --- */}
-                        <ModelSelector selected={selectedModel} setSelected={setSelectedModel} />
-                        <h2 className="text-xl font-bold font-heading border-b pb-2 mt-4">2. Your Space</h2>
-                        <ImageUploader onImageSelected={handleImageSelected} />
-                        <h2 className="text-xl font-bold font-heading border-b pb-2 mt-4">3. Your Vision</h2>
-                        <StyleSelector />
-                        <FormTextarea label="Other Details" name="other" placeholder="e.g., add a large ficus plant in the corner..." isOptional={true} />
-                        <button type="submit" disabled={isLoading || !originalImageUrl} className="button-primary py-3 text-base">
-                            {isLoading ? "Designing..." : `Generate (${selectedModel === 'creative' ? 'Creative' : 'Realistic'})`}
-                        </button>
-                    </div>
-                    <div className="p-6 border rounded-lg bg-pure-white shadow-soft sticky top-28 min-h-[400px]">
-                        <GenerationResult originalImage={originalImageUrl} generatedImage={resultImageUrl} isLoading={isLoading} error={error} />
-                    </div>
-                </form>
-            </div>
+  return (
+    <div className="container mx-auto p-8 bg-gray-50 min-h-screen">
+      <div className="text-center mb-12">
+        <h1 className="text-4xl sm:text-5xl font-bold">Create Your New Space</h1>
+        <p className="text-lg text-gray-600 mt-2">Upload an image, define your style, and choose your level of creativity.</p>
+      </div>
+      
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 space-y-6">
+          <ImageUploader onImageSelected={handleImageSelected} />
+          {/* We now pass state and handlers down to the controlled components */}
+          <StyleSelector 
+            style={style} onStyleChange={setStyle}
+            roomType={roomType} onRoomTypeChange={setRoomType}
+          />
+          <CreativitySelector 
+            creativityLevel={creativityLevel} onCreativityChange={setCreativityLevel}
+          />
+          <button 
+            type="submit"
+            disabled={isLoading || !originalImageUrl}
+            className="w-full bg-black text-white py-3 rounded-lg font-semibold text-lg hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {isLoading ? loadingMessage || 'Generating...' : 'Transform My Room'}
+          </button>
         </div>
-    );
+        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 min-h-[400px]">
+          <GenerationResult 
+            originalImage={originalImageUrl}
+            generatedImage={resultImageUrl} 
+            isLoading={isLoading} 
+            error={error}
+          />
+        </div>
+      </form>
+    </div>
+  );
 }
