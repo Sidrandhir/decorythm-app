@@ -10,6 +10,7 @@ import { GenerationResult } from '@/components/shared/GenerationResult';
 
 export default function GeneratePage() {
   // --- STATE IS THE SINGLE SOURCE OF TRUTH ---
+  const [generationId, setGenerationId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +68,7 @@ export default function GeneratePage() {
       }
       
       setResultImageUrl(result.outputUrl);
+      setGenerationId(result.generationId);
 
     } catch (err) {
       if (err instanceof Error) setError(err.message);
@@ -106,7 +108,8 @@ export default function GeneratePage() {
         <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 min-h-[400px]">
           <GenerationResult 
             originalImage={originalImageUrl}
-            generatedImage={resultImageUrl} 
+            generatedImage={resultImageUrl}
+            generationId={generationId} 
             isLoading={isLoading} 
             error={error}
           />
