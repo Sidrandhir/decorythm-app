@@ -89,8 +89,8 @@ export default function SignupPage() {
             <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="input-style"/>
           </div>
           <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-text-color-light">Phone Number (Optional)</label>
-            <input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="input-style"/>
+            <label htmlFor="phone" className="block text-sm font-medium text-text-color-light">Phone Number</label>
+            <input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required className="input-style"/>
           </div>
           <div>
             <label htmlFor="password"  className="block text-sm font-medium text-text-color-light">Password</label>
