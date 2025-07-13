@@ -1,46 +1,18 @@
 // FINAL & CORRECT - components/shared/Navbar.tsx
+'use client'; // This component now uses client-side logic for the menu
+
 import Link from 'next/link';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import type { User } from '@supabase/supabase-js'; // Import the User type
 import UserMenu from './UserMenu';
 
-export default async function Navbar() {
-  const cookieStore = await cookies();
+// The Navbar now accepts the 'user' object as a prop
+interface NavbarProps {
+  user: User | null;
+}
 
-  // --- THIS IS THE CORRECT, FULL CONFIGURATION ---
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          // The server-side client needs a way to set cookies
-          // but we will not be setting cookies in this read-only component.
-          // We can leave this empty for now.
-        },
-        remove(name: string, options: CookieOptions) {
-          // Same as above, not needed for this component.
-        },
-      },
-    }
-  );
-  // --- END OF FIX ---
-  
-  const { data: { user } } = await supabase.auth.getUser();
-
-  let firstName: string | null = null;
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('first_name')
-      .eq('id', user.id)
-      .single();
-    // Use the first name if it exists, otherwise fallback to the user's email
-    firstName = profile?.first_name || user.email;
-  }
+export default function Navbar({ user }: NavbarProps) {
+  // The first name can be derived from the user object's metadata
+  const firstName = user?.user_metadata?.first_name || user?.email;
 
   return (
     <header className="bg-primary text-light-text-on-dark shadow-elevated sticky top-0 z-50">
@@ -50,8 +22,10 @@ export default async function Navbar() {
         </Link>
         <div className="flex items-center gap-4">
           {user ? (
+            // It passes the first name down to the UserMenu
             <UserMenu userFirstName={firstName} />
           ) : (
+            // The logged-out view remains the same
             <>
               <Link href="/login" className="text-sm sm:text-base font-semibold hover:text-accent transition-colors duration-fast">
                 Log In

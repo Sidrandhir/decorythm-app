@@ -1,19 +1,28 @@
-// app/page.tsx
+// File: app/page.tsx
+'use client';
+
 import { HeroSection } from '@/components/landing/HeroSection';
+import { BeforeAfterSlider } from '@/components/landing/BeforeAfterSlider';
 import { HowItWorksSection } from '@/components/landing/HowItWorksSection';
-import { ShowcaseSection } from '@/components/landing/ShowcaseSection';
+import { TestimonialsSection } from '@/components/landing/TestimonialsSection';
+import { AiEdgeSection } from '@/components/landing/AiEdgeSection';
 import { FinalCTASection } from '@/components/landing/FinalCTASection';
 import { Footer } from '@/components/landing/Footer';
 
+
 export default function LandingPage() {
   return (
-    // We use your 'soft-white' brand color for the background
-    <div className="bg-soft-white w-full">
+    // The main layout file from our previous steps will handle the global Navbar and Footer.
+    // This component's only job is to arrange the sections.
+    <div>
       <HeroSection />
+      <BeforeAfterSlider />
       <HowItWorksSection />
-      <ShowcaseSection />
+      <TestimonialsSection />  
+      <AiEdgeSection />   
       <FinalCTASection />
-      <Footer />
+      <Footer />   
+      {/* More sections will be added here */}
     </div>
   );
 }

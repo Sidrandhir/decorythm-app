@@ -1,30 +1,43 @@
-// components/landing/HowItWorksSection.tsx
+// File: components/landing/HowItWorksSection.tsx
+'use client';
+
+import { motion } from 'framer-motion';
+import { UploadCloud, PenTool, BrainCircuit, Download } from 'lucide-react';
+
 const steps = [
-  { number: '01', title: 'Upload Your Photo', description: 'Take a clear picture of the room you want to transform. Good lighting helps our AI see every detail.' },
-  { number: '02', title: 'Define Your Vision', description: 'Choose from dozens of styles like Modern, Minimalist, or Bohemian. Tell our AI what you dream of.' },
-  { number: '03', title: 'Generate & Refine', description: 'Receive multiple high-quality design concepts in seconds. Love a design? Save it and start your project.' },
+    { icon: UploadCloud, title: "1. Upload Your Space", description: "Start with a photo of any room from any angle.", delay: 0.1 },
+    { icon: PenTool, title: "2. Define Your Vision", description: "Select your desired style, materials, and mood.", delay: 0.3 },
+    { icon: BrainCircuit, title: "3. Witness the Magic", description: "Our AI generates a bespoke, high-quality design.", delay: 0.5 },
+    { icon: Download, title: "4. Save & Share", description: "Download your new space or generate variations.", delay: 0.7 }
 ];
 
 export function HowItWorksSection() {
-  return (
-    <section id="how-it-works" className="py-20 sm:py-32">
-      <div className="container mx-auto px-4">
-        <div className="text-center">
-          <h2 className="font-heading text-3xl sm:text-4xl font-bold text-primary">Effortless Transformation in Three Steps</h2>
-          <p className="mt-4 text-lg text-text-color-light">From a simple photo to your dream interior.</p>
-        </div>
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
-          {steps.map((step) => (
-            <div key={step.number} className="flex flex-col items-center">
-              <div className="flex items-center justify-center h-16 w-16 rounded-full bg-subtle-accent-bg border border-accent">
-                <span className="font-heading text-2xl font-bold text-accent">{step.number}</span>
-              </div>
-              <h3 className="mt-6 font-heading text-xl font-semibold text-primary">{step.title}</h3>
-              <p className="mt-2 text-base text-text-color-subtle">{step.description}</p>
+    return (
+        <section id="how-it-works" className="py-24 sm:py-32 bg-white">
+            <div className="container mx-auto px-4">
+                <div className="text-center mb-16">
+                    <h2 className="text-4xl md:text-5xl font-bold font-display text-gray-900">From Photo to Reality</h2>
+                    <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">Our process is designed to be as intuitive as your own creativity.</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12">
+                    {steps.map((step) => (
+                        <motion.div 
+                            key={step.title}
+                            initial={{ opacity: 0, y: 50 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true, amount: 0.5 }}
+                            transition={{ duration: 0.6, delay: step.delay }}
+                            className="text-center"
+                        >
+                            <div className="flex items-center justify-center h-16 w-16 bg-gray-100 rounded-2xl mx-auto mb-6">
+                                <step.icon className="w-8 h-8 text-gray-700" />
+                            </div>
+                            <h3 className="text-xl font-semibold text-gray-800">{step.title}</h3>
+                            <p className="mt-2 text-gray-500">{step.description}</p>
+                        </motion.div>
+                    ))}
+                </div>
             </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
+        </section>
+    );
 }
