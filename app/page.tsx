@@ -202,71 +202,126 @@ const FinalCTA = () => (
 );
 
 // --- 7. AI Chatbot (Responsive) ---
+type ChatOption = {
+  text: string;
+  next: string;
+};
+
+type ChatNode = {
+  answer?: string;
+  question?: string;
+  options: ChatOption[];
+  redirect?: string;
+};
+
+type ChatTree = {
+  [key: string]: ChatNode;
+};
+// --- END OF TYPING FIX ---
+
 const AiChatbot = () => {
     const [isOpen, setIsOpen] = useState(false);
+    const [conversation, setConversation] = useState([
+        { role: 'assistant', content: 'Welcome to Decorythm! I am Deco, your personal design concierge. How can I assist you today?' }
+    ]);
+    
+    // The state now knows it can only be a key from our chatTree
+    const [currentOptionsKey, setCurrentOptionsKey] = useState<keyof typeof chatTree>('main');
 
-    // The Vercel AI SDK Hook - this handles all the complex chat logic for us.
-    const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
-        // We will create this API route in the next step.
-        api: '/api/chat' 
-    });
+    const chatTree: ChatTree = {
+        main: {
+            question: "How can I assist you today?",
+            options: [
+                { text: "Explain Design Styles", next: "styles" },
+                { text: "How does the AI work?", next: "howItWorks" },
+                { text: "What are design tokens?", next: "tokens" },
+            ]
+        },
+        styles: {
+            answer: "Of course. We specialize in a range of aesthetics. 'Modern' focuses on clean lines, 'Bohemian' on eclectic textures, and 'Industrial' on raw, edgy materials. Which would you like to know more about?",
+            options: [
+                { text: "Tell me about Modern", next: "modernStyle" },
+                { text: "Tell me about Bohemian", next: "bohemianStyle" },
+                { text: "Back to main menu", next: "main" },
+            ]
+        },
+        howItWorks: {
+            answer: "It's simple! You upload a photo of your space. Then, you select your desired styles and materials. Our AI, trained on luxury design principles, generates a new, photorealistic version of your room in under a minute.",
+            options: [{ text: "Tell me about the AI", next: "aiTech" }, { text: "Back to main menu", next: "main" }]
+        },
+        tokens: {
+            answer: "Think of tokens as your design credits. One token is used for each image generation. You receive free tokens upon signing up, and can purchase more with our premium packages.",
+            options: [{ text: "View Pricing", next: "pricingLink" }, { text: "Back to main menu", next: "main" }]
+        },
+        modernStyle: {
+            answer: "Modern design emphasizes simplicity, neutral colors, and natural materials like wood and metal. It's defined by a lack of ornate decoration, creating a clean, uncluttered, and calming space.",
+            options: [{ text: "Explain another style", next: "styles" }, { text: "Back to main menu", next: "main" }]
+        },
+        bohemianStyle: {
+            answer: "Bohemian or 'Boho' style is for the free-spirited. It features a mix of patterns, textures, natural elements like plants, and collected items from around the world. It's warm, personal, and eclectic.",
+            options: [{ text: "Explain another style", next: "styles" }, { text: "Back to main menu", next: "main" }]
+        },
+        aiTech: {
+            answer: "Our AI doesn't just copy and paste. It understands spatial relationships, lighting physics, and the principles of good design harmony to create a truly cohesive and believable space.",
+            options: [{ text: "How do I start?", next: "howItWorks" }, { text: "Back to main menu", next: "main" }]
+        },
+        pricingLink: {
+            redirect: '/pricing',
+            options: [] // must have an options array to match the type
+        }
+    };
+
+    // The 'option' parameter is now correctly typed as ChatOption
+    const handleOptionClick = (option: ChatOption) => {
+        const userMessage = { role: 'user', content: option.text };
+        const nextNodeKey = option.next as keyof typeof chatTree;
+        const nextNode = chatTree[nextNodeKey];
+
+        if (nextNode.redirect) {
+            window.location.href = nextNode.redirect;
+            return;
+        }
+
+        const assistantResponse = { role: 'assistant', content: nextNode.answer || nextNode.question || '' };
+        
+        setConversation(prev => [...prev, userMessage, assistantResponse]);
+        setCurrentOptionsKey(nextNodeKey);
+    };
 
     return (
         <>
-            {/* The floating button to open the chat */}
             <div className="fixed bottom-6 right-6 z-50">
                 <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setIsOpen(true)}
                     className="bg-accent text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center">
                     <MessageCircle size={32} />
                 </motion.button>
             </div>
-
-            {/* The Chat Window */}
             <AnimatePresence>
             {isOpen && (
-                <motion.div initial={{ opacity: 0, y: 50, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 50, scale: 0.9 }}
-                    className="fixed bottom-24 right-6 w-[calc(100vw-3rem)] max-w-sm bg-white rounded-2xl shadow-2xl border z-50 flex flex-col origin-bottom-right">
-                    
-                    {/* Header */}
-                    <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl">
-                        <h3 className="font-semibold text-primary">Decorythm AI Assistant</h3>
+                <motion.div initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 50 }}
+                    className="fixed bottom-24 right-6 w-[calc(100vw-3rem)] max-w-sm bg-white rounded-2xl shadow-2xl border z-50 flex flex-col origin-bottom-right h-[32rem]">
+                    <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl flex-shrink-0">
+                        <h3 className="font-semibold text-primary">Decorythm Concierge</h3>
                         <button onClick={() => setIsOpen(false)} className="text-gray-500 hover:text-gray-900"><X size={20}/></button>
                     </div>
-                    
-                    {/* Message History */}
-                    <div className="p-4 flex-grow h-80 overflow-y-auto space-y-4">
-                        {messages.length > 0 ? (
-                            messages.map(m => (
-                                <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[80%] p-3 rounded-lg text-sm ${m.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-800'}`}>
-                                        {m.content}
-                                    </div>
+                    <div className="p-4 flex-grow overflow-y-auto space-y-4">
+                        {conversation.map((msg, index) => (
+                             <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-800'}`}>
+                                    {msg.content}
                                 </div>
-                            ))
-                        ) : (
-                            <div className="p-3 bg-gray-100 rounded-lg text-sm w-fit max-w-xs">
-                                Welcome! Ask me about interior design styles, our process, or how to get the best results.
                             </div>
-                        )}
+                        ))}
                     </div>
-                    
-                    {/* Input Form */}
-                    <div className="p-3 border-t bg-white rounded-b-2xl">
-                        <form onSubmit={handleSubmit} className="relative">
-                            <input
-                                value={input}
-                                onChange={handleInputChange}
-                                placeholder="Ask a question..."
-                                className="w-full border-gray-300 rounded-full py-2 pl-4 pr-12 text-sm focus:ring-accent focus:border-accent"
-                            />
-                            <button
-                                type="submit"
-                                disabled={isLoading}
-                                className="absolute right-1 top-1/2 -translate-y-1/2 bg-accent text-white h-8 w-8 rounded-full flex items-center justify-center disabled:bg-gray-400"
-                            >
-                                <ArrowRight size={18}/>
-                            </button>
-                        </form>
+                    <div className="p-4 border-t bg-white rounded-b-2xl flex-shrink-0">
+                        <div className="flex flex-wrap gap-2">
+                           {chatTree[currentOptionsKey]?.options.map(option => (
+                               <button key={option.next} onClick={() => handleOptionClick(option)}
+                                className="px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-sm font-medium hover:bg-blue-200">
+                                   {option.text}
+                               </button>
+                           ))}
+                        </div>
                     </div>
                 </motion.div>
             )}
