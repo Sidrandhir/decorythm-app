@@ -1,36 +1,36 @@
-// FINAL & CORRECT - components/shared/Navbar.tsx
-'use client'; // This component now uses client-side logic for the menu
-
+// File: components/shared/Navbar.tsx
 import Link from 'next/link';
-import type { User } from '@supabase/supabase-js'; // Import the User type
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import UserMenu from './UserMenu';
 
-// The Navbar now accepts the 'user' object as a prop
-interface NavbarProps {
-  user: User | null;
-}
-
-export default function Navbar({ user }: NavbarProps) {
-  // The first name can be derived from the user object's metadata
-  const firstName = user?.user_metadata?.first_name || user?.email;
+export default async function Navbar() {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: { get: (name: string) => cookieStore.get(name)?.value },
+    }
+  );
+  
+  const { data: { user } } = await supabase.auth.getUser();
 
   return (
-    <header className="bg-primary text-light-text-on-dark shadow-elevated sticky top-0 z-50">
-      <nav className="container mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
-        <Link href="/" className="text-2xl font-heading font-bold text-accent hover:text-pure-white transition-colors duration-fast">
+    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200">
+      <nav className="container mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
+        <Link href="/" className="text-2xl font-bold font-display text-primary hover:text-accent transition-colors">
           Decorythm
         </Link>
         <div className="flex items-center gap-4">
           {user ? (
-            // It passes the first name down to the UserMenu
-            <UserMenu userFirstName={firstName} />
+            <UserMenu userEmail={user.email} />
           ) : (
-            // The logged-out view remains the same
             <>
-              <Link href="/login" className="text-sm sm:text-base font-semibold hover:text-accent transition-colors duration-fast">
+              <Link href="/login" className="text-sm font-semibold text-gray-600 hover:text-black">
                 Log In
               </Link>
-              <Link href="/signup" className="bg-accent text-primary text-sm sm:text-base font-bold py-2 px-4 rounded-md hover:shadow-gold-glow transition-all duration-fast">
+              <Link href="/signup" className="bg-black text-white text-sm font-semibold py-2 px-4 rounded-full hover:bg-gray-800 transition-colors">
                 Sign Up
               </Link>
             </>
