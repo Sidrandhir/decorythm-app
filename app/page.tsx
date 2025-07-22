@@ -85,7 +85,6 @@ const AboutSection = () => (
 
 // --- NEW SECTION: "The Proof Gallery" ---
 const ProofGallerySection = () => {
-  // Define the 8 image pairs for your gallery
   const galleryItems = [
     { before: "/images/gallery/before-1.jpg", after: "/images/gallery/after-1.jpg" },
     { before: "/images/gallery/before-2.jpg", after: "/images/gallery/after-2.jpg" },
@@ -99,25 +98,44 @@ const ProofGallerySection = () => {
 
   return (
     <section className="py-20 sm:py-28 bg-soft-white border-y">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto">
         <SectionHeader 
           title="A Gallery of Proof" 
           subtitle="Explore a curated selection of real-world transformations. Each slider reveals the power of our design intelligence." 
         />
         
-        {/* The responsive grid that holds the sliders */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* --- THIS IS THE RESPONSIVE FIX --- */}
+
+        {/* Mobile View: Horizontal Scroller */}
+        <div className="md:hidden">
+            <div className="flex overflow-x-auto snap-x snap-mandatory space-x-6 pb-4 -mx-4 px-4">
+                {galleryItems.map((item, index) => (
+                    <div key={index} className="flex-shrink-0 snap-center w-4/5">
+                        <div className="aspect-w-1 aspect-h-1 rounded-2xl shadow-lg overflow-hidden border-2 border-white bg-gray-200">
+                            <ReactCompareSlider
+                                itemOne={<ReactCompareSliderImage src={item.before} alt="Before" style={{ objectFit: 'cover' }}/>}
+                                itemTwo={<ReactCompareSliderImage src={item.after} alt="After" style={{ objectFit: 'cover' }} />}
+                            />
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        {/* Desktop View: Grid Layout */}
+        <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-4">
           {galleryItems.map((item, index) => (
             <MotionWrap key={index} delay={index * 0.05}>
-              <div className="aspect-w-1 aspect-h-1 rounded-2xl shadow-lg overflow-hidden border-2 border-white">
+              <div className="aspect-w-1 aspect-h-1 rounded-2xl shadow-lg overflow-hidden border-2 border-white bg-gray-200">
                 <ReactCompareSlider
-                  itemOne={<ReactCompareSliderImage src={item.before} alt="Before" />}
-                  itemTwo={<ReactCompareSliderImage src={item.after} alt="After" />}
+                  itemOne={<ReactCompareSliderImage src={item.before} alt="Before" style={{ objectFit: 'cover' }}/>}
+                  itemTwo={<ReactCompareSliderImage src={item.after} alt="After" style={{ objectFit: 'cover' }}/>}
                 />
               </div>
             </MotionWrap>
           ))}
         </div>
+        {/* --- END OF FIX --- */}
 
       </div>
     </section>
