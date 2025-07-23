@@ -1,29 +1,40 @@
-// FINAL - File: components/forms/PasswordInput.tsx
+// FINAL & CORRECT - components/forms/PasswordInput.tsx
 'use client';
+
 import { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react'; // We will install lucide-react next
+import { Eye, EyeOff } from 'lucide-react';
 
-// Using a generic interface to accept any standard input props
-interface PasswordInputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
+// This allows our component to accept all the standard props of an HTML input
+type PasswordInputProps = React.InputHTMLAttributes<HTMLInputElement>;
 
-export const PasswordInput = (props: PasswordInputProps) => {
+export function PasswordInput(props: PasswordInputProps) {
   const [showPassword, setShowPassword] = useState(false);
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
 
   return (
     <div className="relative">
       <input
+        // Spread all the props from the parent (id, value, onChange, required, etc.)
         {...props}
         type={showPassword ? 'text' : 'password'}
-        className="input-style pr-10" // Use the global style and add padding for the icon
+        // We combine the global 'input-style' with padding-right for the icon
+        className={`${props.className || ''} input-style pr-10`}
       />
       <button
-        type="button"
-        onClick={() => setShowPassword(!showPassword)}
-        className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-text-color-subtle"
-        aria-label={showPassword ? 'Hide password' : 'Show password'}
+        type="button" // Important: prevents form submission
+        onClick={togglePasswordVisibility}
+        className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-gray-500 hover:text-gray-700"
+        aria-label={showPassword ? "Hide password" : "Show password"}
       >
-        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+        {showPassword ? (
+          <EyeOff className="h-5 w-5" />
+        ) : (
+          <Eye className="h-5 w-5" />
+        )}
       </button>
     </div>
   );
-};
+}
